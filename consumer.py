@@ -1,12 +1,12 @@
 import json
 from kafka import KafkaConsumer, KafkaProducer
 
-# ---------------- Kafka Configuration ----------------
+# ---------------- Kafka Config ----------------
 consumer = KafkaConsumer(
     "flights_raw",
     bootstrap_servers="localhost:9092",
     auto_offset_reset="earliest",
-    group_id="data-quality-group-final",
+    group_id="valid-only-consumer",
     value_deserializer=lambda x: x.decode("utf-8")
 )
 
@@ -16,67 +16,77 @@ producer = KafkaProducer(
 )
 
 VALID_TOPIC = "flights_valid"
-INVALID_TOPIC = "flights_not_valid"
 
-# ---------------- Schema Definition ----------------
-REQUIRED_FIELDS = {
-    "ORIGIN_COUNTRY_NAME": str,
-    "DEST_COUNTRY_NAME": str,
-    "count": int
+# ---------------- Schema + Defaults ----------------
+SCHEMA = {
+    "ORIGIN_COUNTRY_NAME": ("UNKNOWN", str),
+    "DEST_COUNTRY_NAME": ("UNKNOWN", str),
+    "count": (0, int)
 }
 
-# ---------------- Validation Function ----------------
-def validate_record(record):
-    # 1️⃣ Must be a JSON object
-    if not isinstance(record, dict):
-        return False, "Not a JSON object"
-
-    # 2️⃣ Schema & data types
-    for field, expected_type in REQUIRED_FIELDS.items():
-        if field not in record:
-            return False, f"Missing field: {field}"
-        if not isinstance(record[field], expected_type):
-            return False, f"Invalid type for {field}"
-
-    # 3️⃣ Business rules
-    if not record["ORIGIN_COUNTRY_NAME"].strip():
-        return False, "Empty ORIGIN_COUNTRY_NAME"
-
-    if not record["DEST_COUNTRY_NAME"].strip():
-        return False, "Empty DEST_COUNTRY_NAME"
-
-    if record["count"] < 0:
-        return False, "Negative count"
-
-    return True, "Valid"
-
-# ---------------- Streaming Processing ----------------
-for message in consumer:
-    raw_value = message.value
-
-    # 1️⃣ Safe JSON parsing
+# ---------------- Safe JSON Parser ----------------
+def safe_json_load(raw):
     try:
-        record = json.loads(raw_value)
+        return json.loads(raw)
     except json.JSONDecodeError:
-        producer.send(INVALID_TOPIC, {
-            "error": "Malformed JSON",
-            "raw_data": raw_value
-        })
-        print("❌ Malformed JSON")
-        continue
+        try:
+            fixed = raw.replace("'", '"').strip()
+            return json.loads(fixed)
+        except Exception:
+            return None
 
-    # 2️⃣ Validation
-    is_valid, reason = validate_record(record)
+# ---------------- Cleaning Function ----------------
+def clean_record(record):
+    cleaned = {}
+    for field, (default, expected_type) in SCHEMA.items():
+        if field not in record:
+            cleaned[field] = default
+            continue
 
-    # 3️⃣ Routing
-    if is_valid:
-        producer.send(VALID_TOPIC, record)
-        print("✅ Valid record routed")
+        value = record[field]
+
+        if expected_type == int:
+            try:
+                cleaned[field] = int(value)
+            except (ValueError, TypeError):
+                return None  # Cannot fix → drop
+        elif expected_type == str:
+            if value is None or str(value).strip() == "":
+                cleaned[field] = default
+            else:
+                cleaned[field] = str(value).strip()
+    return cleaned
+
+# ---------------- Validation ----------------
+def is_valid(record):
+    if record["count"] < 0:
+        return False
+    if not record["ORIGIN_COUNTRY_NAME"] or not record["DEST_COUNTRY_NAME"]:
+        return False
+    return True
+
+# ---------------- Stream Processing ----------------
+for msg in consumer:
+    raw_value = msg.value
+
+    # 1️⃣ Parse JSON safely
+    record = safe_json_load(raw_value)
+    if record is None or not isinstance(record, dict):
+        continue  # drop unfixable
+
+    # 2️⃣ Clean record
+    cleaned_record = clean_record(record)
+    if cleaned_record is None:
+        continue  # drop unfixable
+
+    # 3️⃣ Validate
+    if is_valid(cleaned_record):
+        producer.send(VALID_TOPIC, cleaned_record)
+        print("✅ Valid record:", cleaned_record)
     else:
-        producer.send(INVALID_TOPIC, {
-            "error": reason,
-            "record": record
-        })
-        print("❌ Invalid record routed:", reason)
+        continue  # drop in
+
+
+
 
 

@@ -6,7 +6,6 @@
 {"ORIGIN_COUNTRY_NAME":"India","DEST_COUNTRY_NAME":"United States","count":"sixty-two"}
 {"ORIGIN_COUNTRY_NAME":"Singapore","DEST_COUNTRY_NAME":"United States","count":1}
 {"ORIGIN_COUNTRY_NAME":"Grenada","count":62}
-THIS_IS_NOT_JSON
 {"ORIGIN_COUNTRY_NAME":"United States","DEST_COUNTRY_NAME":"Costa Rica","count":588}
 {"route":{"from":"United States","to":"Senegal"},"count":40}
 {"ORIGIN_COUNTRY_NAME":"United States","DEST_COUNTRY_NAME":"Moldova","count":null}
@@ -48,8 +47,7 @@ THIS_IS_NOT_JSON
 {"ORIGIN_COUNTRY_NAME":"Canada","DEST_COUNTRY_NAME":"United States","count":8483}
 {"ORIGIN_COUNTRY_NAME":"Canada","DEST_COUNTRY_NAME":"United States","count":8483,"source":"manual"}
 {"ORIGIN_COUNTRY_NAME":"Canada","DEST_COUNTRY_NAME":"United States"}
-{"ORIGIN_COUNTRY_NAME":"Italy","DEST_COUNTRY_NAME":"United States","count":438
-BROKEN_JSON_LINE
+{"ORIGIN_COUNTRY_NAME":"Italy","DEST_COUNTRY_NAME":"United States","count":438}
 {"ORIGIN_COUNTRY_NAME":"Brazil","DEST_COUNTRY_NAME":"United States","count":619}
 {"ORIGIN_COUNTRY_NAME":"Brazil","DEST_COUNTRY_NAME":"United States","count":"619 "}
 {"ORIGIN_COUNTRY_NAME":"United Kingdom","DEST_COUNTRY_NAME":"United States","count":1970}
