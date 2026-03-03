@@ -8,7 +8,7 @@ producer = KafkaProducer(
 
 TOPIC = "flights_raw"
 
-with open("flights_summary.json", "r", encoding="utf-8") as file:
+with open("flights_summary.jsonl", "r", encoding="utf-8") as file:
     for line in file:
         line = line.strip()
         if not line:
